@@ -1,9 +1,14 @@
 package com.example.Java.REST.API.Demo.controller;
 
+import com.example.Java.REST.API.Demo.dto.EmployeeMapper;
+import com.example.Java.REST.API.Demo.dto.EmployeeRequestDto;
+import com.example.Java.REST.API.Demo.dto.EmployeeResponseDto;
 import com.example.Java.REST.API.Demo.entity.Employee;
 import com.example.Java.REST.API.Demo.service.EmployeeService;
 import com.example.Java.REST.API.Demo.util.EmployeeProcessor;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -30,6 +35,8 @@ import java.util.Map;
 @RequestMapping("/api/employees")
 public class EmployeeController {
 
+    private static final Logger logger = LoggerFactory.getLogger(EmployeeController.class);
+
     private final EmployeeService employeeService;
 
     // Constructor injection for better testability and immutability
@@ -40,71 +47,70 @@ public class EmployeeController {
     /**
      * GET all employees
      * HTTP Status: 200 OK
-     * Collection Framework: Returns List<Employee>
      */
     @GetMapping
-    public ResponseEntity<List<Employee>> getAllEmployees() {
-        List<Employee> employees = employeeService.getAllEmployees();
+    public ResponseEntity<List<EmployeeResponseDto>> getAllEmployees() {
+        logger.info("Request received: GET /api/employees");
+        List<EmployeeResponseDto> employees = EmployeeMapper.toDtoList(employeeService.getAllEmployees());
         return new ResponseEntity<>(employees, HttpStatus.OK);
     }
 
     /**
      * GET employee by ID
-     * HTTP Status: 200 OK (success) or 404 NOT_FOUND (via @ControllerAdvice)
-     * Exception handling: ResourceNotFoundException is caught by GlobalExceptionHandler
+     * HTTP Status: 200 OK or 404 NOT_FOUND
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Employee> getEmployeeById(@PathVariable Long id) {
+    public ResponseEntity<EmployeeResponseDto> getEmployeeById(@PathVariable Long id) {
+        logger.info("Request received: GET /api/employees/{}", id);
         Employee employee = employeeService.getEmployeeById(id);
-        return new ResponseEntity<>(employee, HttpStatus.OK);
+        return new ResponseEntity<>(EmployeeMapper.toDto(employee), HttpStatus.OK);
     }
 
     /**
      * POST - Create new employee
-     * HTTP Status: 201 CREATED (indicates new resource was created)
-     * Stream API: Service processes the employee creation
+     * HTTP Status: 201 CREATED
      */
     @PostMapping
-    public ResponseEntity<Employee> createEmployee(@RequestBody Employee employee) {
+    public ResponseEntity<EmployeeResponseDto> createEmployee(
+            @Valid @RequestBody EmployeeRequestDto employeeRequestDto) {
+        logger.info("Request received: POST /api/employees");
+        Employee employee = EmployeeMapper.toEntity(employeeRequestDto);
         Employee createdEmployee = employeeService.createEmployee(employee);
-        return new ResponseEntity<>(createdEmployee, HttpStatus.CREATED);
+        return new ResponseEntity<>(EmployeeMapper.toDto(createdEmployee), HttpStatus.CREATED);
     }
 
     /**
      * PUT - Update existing employee
-     * HTTP Status: 200 OK (successful update)
-     * Lambda Expression: Service uses lambda to conditionally update fields
+     * HTTP Status: 200 OK
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Employee> updateEmployee(
+    public ResponseEntity<EmployeeResponseDto> updateEmployee(
             @PathVariable Long id,
-            @RequestBody Employee employee) {
+            @Valid @RequestBody EmployeeRequestDto employeeRequestDto) {
+        logger.info("Request received: PUT /api/employees/{}", id);
+        Employee employee = EmployeeMapper.toEntity(employeeRequestDto);
         Employee updatedEmployee = employeeService.updateEmployee(id, employee);
-        return new ResponseEntity<>(updatedEmployee, HttpStatus.OK);
+        return new ResponseEntity<>(EmployeeMapper.toDto(updatedEmployee), HttpStatus.OK);
     }
 
     /**
      * DELETE - Remove employee
-     * HTTP Status: 204 NO_CONTENT (successful deletion, no content to return)
-     * This is a better practice than 200 OK for DELETE operations
+     * HTTP Status: 204 NO_CONTENT
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteEmployee(@PathVariable Long id) {
+        logger.info("Request received: DELETE /api/employees/{}", id);
         employeeService.deleteEmployee(id);
         return ResponseEntity.noContent().build();
     }
 
     /**
-     * SALARY OPERATIONS - Demonstrates Stream API and Lambda
-     */
-    
-    /**
      * POST - Increment all employees' salaries by 10%
      * HTTP Status: 200 OK
-     * Stream API: Service uses streams to process all employees
      */
     @PostMapping("/salary/increment")
     public ResponseEntity<Map<String, String>> incrementSalaries() {
+        logger.info("Request received: POST /api/employees/salary/increment");
         employeeService.incrementSalaries();
         return ResponseEntity.ok(Map.of("message", "All salaries incremented by 10%"));
     }
@@ -112,10 +118,10 @@ public class EmployeeController {
     /**
      * GET - Get average salary of all employees
      * HTTP Status: 200 OK
-     * Stream API: Demonstrates reduction operation
      */
     @GetMapping("/salary/average")
     public ResponseEntity<BigDecimal> getAverageSalary() {
+        logger.info("Request received: GET /api/employees/salary/average");
         BigDecimal averageSalary = employeeService.getAverageSalary();
         return new ResponseEntity<>(averageSalary, HttpStatus.OK);
     }
@@ -123,10 +129,10 @@ public class EmployeeController {
     /**
      * GET - Get total employee count
      * HTTP Status: 200 OK
-     * Stream API Terminal Operation: count()
      */
     @GetMapping("/count")
     public ResponseEntity<Map<String, Long>> getEmployeeCount() {
+        logger.info("Request received: GET /api/employees/count");
         long count = employeeService.getTotalEmployeeCount();
         return ResponseEntity.ok(Map.of("totalEmployees", count));
     }
@@ -134,54 +140,47 @@ public class EmployeeController {
     /**
      * GET - Get employees sorted by salary
      * HTTP Status: 200 OK
-     * Stream API: sorted() + Lambda expression for comparator
      */
     @GetMapping("/sorted/salary")
-    public ResponseEntity<List<Employee>> getEmployeesSortedBySalary() {
-        List<Employee> employees = employeeService.getEmployeesSortedBySalary();
+    public ResponseEntity<List<EmployeeResponseDto>> getEmployeesSortedBySalary() {
+        logger.info("Request received: GET /api/employees/sorted/salary");
+        List<EmployeeResponseDto> employees = EmployeeMapper.toDtoList(employeeService.getEmployeesSortedBySalary());
         return new ResponseEntity<>(employees, HttpStatus.OK);
     }
 
     /**
      * GET - Filter employees by job title
      * HTTP Status: 200 OK
-     * Stream API: filter() + Lambda expression
-     * Query Parameter: /api/employees/filter?jobTitle=Developer
      */
     @GetMapping("/filter")
-    public ResponseEntity<List<Employee>> filterByJobTitle(
+    public ResponseEntity<List<EmployeeResponseDto>> filterByJobTitle(
             @RequestParam String jobTitle) {
-        List<Employee> employees = employeeService.findEmployeesByJobTitle(jobTitle);
+        logger.info("Request received: GET /api/employees/filter?jobTitle={}", jobTitle);
+        List<EmployeeResponseDto> employees = EmployeeMapper.toDtoList(employeeService.findEmployeesByJobTitle(jobTitle));
         return new ResponseEntity<>(employees, HttpStatus.OK);
     }
 
     /**
      * GET - Get employees with salary above threshold
      * HTTP Status: 200 OK
-     * Stream API: filter() operation
-     * Query Parameter: /api/employees/salary-threshold?amount=50000
      */
     @GetMapping("/salary-threshold")
-    public ResponseEntity<List<Employee>> getEmployeesAboveSalary(
+    public ResponseEntity<List<EmployeeResponseDto>> getEmployeesAboveSalary(
             @RequestParam BigDecimal amount) {
-        List<Employee> employees = employeeService.getEmployeesWithSalaryAbove(amount);
+        logger.info("Request received: GET /api/employees/salary-threshold?amount={}", amount);
+        List<EmployeeResponseDto> employees = EmployeeMapper.toDtoList(employeeService.getEmployeesWithSalaryAbove(amount));
         return new ResponseEntity<>(employees, HttpStatus.OK);
     }
 
     /**
      * POST - Apply custom processor using Functional Interface
      * HTTP Status: 200 OK
-     * Demonstrates: Functional Interface, Lambda Expression
-     * 
-     * Example usage: Send operation as query parameter
-     * /api/employees/process?operation=INCREMENT_SALARY
      */
     @PostMapping("/process")
-    public ResponseEntity<List<Employee>> processEmployees(
+    public ResponseEntity<List<EmployeeResponseDto>> processEmployees(
             @RequestParam(required = false) String operation) {
-        
-        // Using Functional Interface with Lambda Expression
-        // Lambda expression defines the processing logic
+        logger.info("Request received: POST /api/employees/process?operation={}", operation);
+
         EmployeeProcessor processor = employee -> {
             if ("INCREMENT_SALARY".equals(operation)) {
                 BigDecimal increment = employee.getSalary()
@@ -190,8 +189,9 @@ public class EmployeeController {
             }
             return employee;
         };
-        
-        List<Employee> processedEmployees = employeeService.processEmployees(processor);
+
+        List<EmployeeResponseDto> processedEmployees = EmployeeMapper.toDtoList(employeeService.processEmployees(processor));
         return new ResponseEntity<>(processedEmployees, HttpStatus.OK);
     }
 }
+
