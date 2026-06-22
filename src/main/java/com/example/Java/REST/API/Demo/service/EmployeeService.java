@@ -15,13 +15,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * SERVICE LAYER - Uses Stream API and Lambda Expressions
+ * Service layer for employee business operations.
  *
- * STREAM API: A functional programming approach to process collections.
- * Streams are lazy, chainable, and provide a declarative way to work with data.
- *
- * LAMBDA EXPRESSIONS: Anonymous functions that allow us to pass behavior as data.
- * Syntax: (parameters) -> body
+ * This class handles application logic for managing employees and delegates
+ * persistence operations to the repository layer.
  */
 @Service
 public class EmployeeService {
@@ -35,8 +32,10 @@ public class EmployeeService {
     }
 
     /**
-     * Get all employees using Stream API
+     * Read-only method: fetch all employees.
+     * Uses Stream API to return a list from the repository result.
      */
+    @Transactional(readOnly = true)
     public List<Employee> getAllEmployees() {
         return employeeRepository.findAll()
                 .stream()
@@ -44,8 +43,10 @@ public class EmployeeService {
     }
 
     /**
-     * Get employee by ID with custom exception handling
+     * Read-only method: fetch one employee by ID.
+     * Throws ResourceNotFoundException if the employee does not exist.
      */
+    @Transactional(readOnly = true)
     public Employee getEmployeeById(Long id) {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("Employee ID must be a positive number");
@@ -55,6 +56,10 @@ public class EmployeeService {
                         "Employee not found with id: " + id));
     }
 
+    /**
+     * Create a new employee record.
+     * This is a write operation and requires a transactional context.
+     */
     @Transactional
     public Employee createEmployee(Employee employee) {
         if (employee == null) {
@@ -64,6 +69,10 @@ public class EmployeeService {
         return employeeRepository.save(employee);
     }
 
+    /**
+     * Update an existing employee.
+     * Only non-null fields in the request are copied over.
+     */
     @Transactional
     public Employee updateEmployee(Long id, Employee updatedEmployee) {
         Employee existing = getEmployeeById(id);
@@ -88,6 +97,9 @@ public class EmployeeService {
         return employeeRepository.save(existing);
     }
 
+    /**
+     * Delete an employee by ID.
+     */
     @Transactional
     public void deleteEmployee(Long id) {
         Employee existing = getEmployeeById(id);
@@ -95,6 +107,9 @@ public class EmployeeService {
         employeeRepository.delete(existing);
     }
 
+    /**
+     * Increment all employee salaries by 10% and save the updated list.
+     */
     @Transactional
     public void incrementSalaries() {
         List<Employee> employees = employeeRepository.findAll();
@@ -112,6 +127,10 @@ public class EmployeeService {
         employeeRepository.saveAll(incrementedEmployees);
     }
 
+    /**
+     * Apply a custom processor function to all employees and save results.
+     * Demonstrates functional interface usage and lambda expression handling.
+     */
     @Transactional
     public List<Employee> processEmployees(EmployeeProcessor processor) {
         List<Employee> employees = employeeRepository.findAll()
@@ -123,6 +142,10 @@ public class EmployeeService {
         return employees;
     }
 
+    /**
+     * Read-only filter operation using Stream API.
+     */
+    @Transactional(readOnly = true)
     public List<Employee> findEmployeesByJobTitle(String jobTitle) {
         return employeeRepository.findAll()
                 .stream()
@@ -131,6 +154,10 @@ public class EmployeeService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Read-only filter operation for salary threshold.
+     */
+    @Transactional(readOnly = true)
     public List<Employee> getEmployeesWithSalaryAbove(BigDecimal threshold) {
         return employeeRepository.findAll()
                 .stream()
@@ -138,6 +165,10 @@ public class EmployeeService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Read-only calculation of the average salary.
+     */
+    @Transactional(readOnly = true)
     public BigDecimal getAverageSalary() {
         List<Employee> employees = employeeRepository.findAll();
         if (employees.isEmpty()) {
@@ -151,6 +182,10 @@ public class EmployeeService {
         return totalSalary.divide(BigDecimal.valueOf(employees.size()), 2, RoundingMode.HALF_UP);
     }
 
+    /**
+     * Read-only sort operation returning employees by salary.
+     */
+    @Transactional(readOnly = true)
     public List<Employee> getEmployeesSortedBySalary() {
         return employeeRepository.findAll()
                 .stream()
@@ -158,6 +193,10 @@ public class EmployeeService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Read-only count operation. Uses repository count directly.
+     */
+    @Transactional(readOnly = true)
     public long getTotalEmployeeCount() {
         return employeeRepository.count();
     }
